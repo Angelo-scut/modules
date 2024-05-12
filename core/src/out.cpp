@@ -295,7 +295,7 @@ namespace cv
         {
             char braces[5] = {'\0', '\0', ';', '\0', '\0'};
             return makePtr<FormattedImpl>("[", "]", mtx, &*braces,
-                mtx.rows == 1 || !multiline, false, mtx.depth() == CV_64F ? prec64f : prec32f );
+                mtx.rows == 1 || !multiline, false, mtx.depth() == CV_64F ? prec64f : prec32f );  // 第一和第二个参数是格式，第三个是Mat
         }
     };
 

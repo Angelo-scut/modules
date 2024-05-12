@@ -137,7 +137,7 @@ public:
                 // update upper bound of iterations
                 return _termination_criteria->update(best_model, best_score.inlier_number);
             };
-            bool was_LO_run = false;
+            bool was_LO_run = false;  // Local Optimize，局部最优化
             Mat non_degenerate_model, lo_model;
             Score current_score, lo_score, non_denegenerate_model_score;
 
@@ -149,11 +149,11 @@ public:
             int iters = 0, max_iters = params->getMaxIters();
             for (; iters < max_iters; iters++) {
                 _sampler->generateSample(sample);
-                const int number_of_models = _estimator->estimateModels(sample, models);  // 一次性拟合多个模型
+                const int number_of_models = _estimator->estimateModels(sample, models);  // 一次性拟合多个模型，但其实单应性变换估计中，一次性就四对点，然后对应一个homomatrix
 
                 for (int i = 0; i < number_of_models; i++) {
                     if (iters < max_hyp_test_before_ver) {
-                        current_score = _quality->getScore(models[i]);
+                        current_score = _quality->getScore(models[i]);  // 根据拟合的模型评估所有点的单应性变换，计算内点（误差小于阈值）个数
                     } else {
                         if (is_magsac && iters % repeat_magsac == 0) {
                             if (!_local_optimization->refineModel
@@ -195,7 +195,7 @@ public:
                 } // end loop of number of models
                 if (LO && !was_LO_run && iters >= max_iters_before_LO) {
                     was_LO_run = true;
-                    if (_local_optimization->refineModel(best_model, best_score, lo_model, lo_score))
+                    if (_local_optimization->refineModel(best_model, best_score, lo_model, lo_score))  // 根据内点，寻找局部最优解，就最小二乘法拟合嘛
                         if (lo_score.isBetter(best_score)){
                             max_iters = update_best(lo_model, lo_score);
                         }

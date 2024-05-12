@@ -346,7 +346,7 @@ void Mat::copyTo( OutputArray _dst ) const
 
     if( dims <= 2 )
     {
-        _dst.create( rows, cols, type() );
+        _dst.create( rows, cols, type() );  // 如果dst和this的rows，cols，type一样的话，这里啥事不做
         Mat dst = _dst.getMat();
         if( data == dst.data )
             return;
@@ -364,7 +364,7 @@ void Mat::copyTo( OutputArray _dst ) const
             CV_IPP_RUN_FAST(CV_INSTRUMENT_FUN_IPP(ippiCopy_8u_C1R_L, sptr, (int)src.step, dptr, (int)dst.step, ippiSizeL(sz.width, sz.height)) >= 0)
 #endif
 
-            for (; sz.height--; sptr += src.step, dptr += dst.step)
+            for (; sz.height--; sptr += src.step, dptr += dst.step)  // 如果使用ptr效率就太低了，但是为了避免roi内存不连续导致错误访问问题，这一次只复制连续的内存（width)
                 memcpy(dptr, sptr, sz.width);
         }
         return;

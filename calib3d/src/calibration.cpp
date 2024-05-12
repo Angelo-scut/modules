@@ -1290,7 +1290,7 @@ CV_IMPL void cvInitIntrinsicParams2D( const CvMat* objectPoints,
 
     matA.reset(cvCreateMat( 2*nimages, 2, CV_64F ));
     _b.reset(cvCreateMat( 2*nimages, 1, CV_64F ));
-    a[2] = (!imageSize.width) ? 0.5 : (imageSize.width - 1)*0.5;
+    a[2] = (!imageSize.width) ? 0.5 : (imageSize.width - 1)*0.5;  // 主点
     a[5] = (!imageSize.height) ? 0.5 : (imageSize.height - 1)*0.5;
     _allH.reset(cvCreateMat( nimages, 9, CV_64F ));
 
@@ -1386,9 +1386,9 @@ static double cvCalibrateCamera2Internal( const CvMat* objectPoints,
     const int NINTRINSIC = CV_CALIB_NINTRINSIC;
     double reprojErr = 0;
 
-    Matx33d A;
+    Matx33d A;  // 内参
     double k[14] = {0};
-    CvMat matA = cvMat(3, 3, CV_64F, A.val), _k;
+    CvMat matA = cvMat(3, 3, CV_64F, A.val), _k;  // A.val就是一个内容指针
     int i, nimages, maxPoints = 0, ni = 0, pos, total = 0, nparams, npstep, cn;
     double aspectRatio = 0.;
 
@@ -1404,7 +1404,7 @@ static double cvCalibrateCamera2Internal( const CvMat* objectPoints,
         (npoints->rows != 1 && npoints->cols != 1) )
         CV_Error( CV_StsUnsupportedFormat,
             "the array of point counters must be 1-dimensional integer vector" );
-    if(flags & CALIB_TILTED_MODEL)
+    if(flags & CALIB_TILTED_MODEL)  // flag一般等于0，这里是是否存在切向畸变
     {
         //when the tilted sensor model is used the distortion coefficients matrix must have 14 parameters
         if (distCoeffs->cols*distCoeffs->rows != 14)
@@ -1513,7 +1513,7 @@ static double cvCalibrateCamera2Internal( const CvMat* objectPoints,
     Mat _m( 1, total, CV_64FC2 );
     Mat allErrors(1, total, CV_64FC2);
 
-    if(CV_MAT_CN(objectPoints->type) == 3) {
+    if(CV_MAT_CN(objectPoints->type) == 3) {  // 肯定就是三维的啦，所以应该不用转成齐次矩阵了
         cvarrToMat(objectPoints).convertTo(matM, CV_64F);
     } else {
         convertPointsHomogeneous(cvarrToMat(objectPoints), matM);
@@ -1570,7 +1570,7 @@ static double cvCalibrateCamera2Internal( const CvMat* objectPoints,
     else
     {
         Scalar mean, sdv;
-        meanStdDev(matM, mean, sdv);
+        meanStdDev(matM, mean, sdv);  // matM是object points，mean就是中间点
         if( fabs(mean[2]) > 1e-5 || fabs(sdv[2]) > 1e-5 )
             CV_Error( CV_StsBadArg,
             "For non-planar calibration rigs the initial intrinsic matrix must be specified" );
@@ -1585,8 +1585,8 @@ static double cvCalibrateCamera2Internal( const CvMat* objectPoints,
                 CV_Error( CV_StsOutOfRange,
                     "The specified aspect ratio (= cameraMatrix[0][0] / cameraMatrix[1][1]) is incorrect" );
         }
-        CvMat _matM = cvMat(matM), m = cvMat(_m);
-        cvInitIntrinsicParams2D( &_matM, &m, npoints, imageSize, &matA, aspectRatio );
+        CvMat _matM = cvMat(matM), m = cvMat(_m);  // 分别为object points和image points
+        cvInitIntrinsicParams2D( &_matM, &m, npoints, imageSize, &matA, aspectRatio );  // aspectRation = 0，这里就初始化好内参了
     }
 
     CvLevMarq solver( nparams, 0, termCrit );
@@ -3374,7 +3374,7 @@ static void collectCalibrationData( InputArrayOfArrays objectPoints,
     Point3f* objPtData = objPtMat.ptr<Point3f>();
     Point2f* imgPtData1 = imgPtMat1.ptr<Point2f>();
 
-    for (int i = 0, j = 0; i < nimages; i++)
+    for (int i = 0, j = 0; i < nimages; i++)  // 复制到连续的内存去
     {
         Mat objpt = objectPoints.getMat(i);
         Mat imgpt1 = imagePoints1.getMat(i);
@@ -3386,7 +3386,7 @@ static void collectCalibrationData( InputArrayOfArrays objectPoints,
             imgPtData1[j + n] = imgpt1.ptr<Point2f>()[n];
         }
 
-        if (imgPtData2)
+        if (imgPtData2)  // 竟然还能两个视角同时标定，但是这里只是单目标定
         {
             Mat imgpt2 = imagePoints2.getMat(i);
             int numberOfImage2Points = imgpt2.checkVector(2, CV_32F);
@@ -3681,7 +3681,7 @@ double cv::calibrateCameraRO(InputArrayOfArrays _objectPoints,
     CV_Assert( _distCoeffs.needed() );
 
     Mat cameraMatrix = _cameraMatrix.getMat();
-    cameraMatrix = prepareCameraMatrix(cameraMatrix, rtype, flags);
+    cameraMatrix = prepareCameraMatrix(cameraMatrix, rtype, flags);  // 初始化内参矩阵为单位对角矩阵
     Mat distCoeffs = _distCoeffs.getMat();
     distCoeffs = (flags & CALIB_THIN_PRISM_MODEL) && !(flags & CALIB_TILTED_MODEL)  ? prepareDistCoeffs(distCoeffs, rtype, 12) :
                                                       prepareDistCoeffs(distCoeffs, rtype);
@@ -3724,8 +3724,8 @@ double cv::calibrateCameraRO(InputArrayOfArrays _objectPoints,
     }
 
     collectCalibrationData( _objectPoints, _imagePoints, noArray(), iFixedPoint,
-                            objPt, imgPt, 0, npoints );
-    bool releaseObject = iFixedPoint > 0 && iFixedPoint < npoints.at<int>(0) - 1;
+                            objPt, imgPt, 0, npoints );  // iFixedPoint = -1，这个函数只是将所有点都复制到一个连续的内存而已（objPt，imgPt）
+    bool releaseObject = iFixedPoint > 0 && iFixedPoint < npoints.at<int>(0) - 1;  //object-releasing方法是指使用任意已知尺寸的物体进行标定，因此需要选择一个固定的点
 
     newobj_needed = newobj_needed && releaseObject;
     int np = npoints.at<int>( 0 );
