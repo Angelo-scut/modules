@@ -147,7 +147,7 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
         iofs = storage[node].img_ofs;       \
     }
 
-    // Get highest absolute channel difference in diff
+    // Get highest absolute channel difference in diff// 求出 ptr1 和 ptr2 指向的像素 r,g,b 差值的最大值
     #define c_diff(ptr1,ptr2,diff)           \
     {                                        \
         db = std::abs((ptr1)[0] - (ptr2)[0]);\
@@ -178,25 +178,25 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
 
     // draw a pixel-wide border of dummy "watershed" (i.e. boundary) pixels
     for( j = 0; j < size.width; j++ )
-        mask[j] = mask[j + mstep*(size.height-1)] = WSHED;
+        mask[j] = mask[j + mstep*(size.height-1)] = WSHED;  // 将图像的首行和末尾画上分水岭
 
     // initial phase: put all the neighbor pixels of each marker to the ordered queue -
     // determine the initial boundaries of the basins
     for( i = 1; i < size.height-1; i++ )
     {
         img += istep; mask += mstep;
-        mask[0] = mask[size.width-1] = WSHED; // boundary pixels
+        mask[0] = mask[size.width-1] = WSHED; // boundary pixels  将图像的首列和末尾列画上分水岭
 
         for( j = 1; j < size.width-1; j++ )
         {
             int* m = mask + j;
-            if( m[0] < 0 ) m[0] = 0;
+            if( m[0] < 0 ) m[0] = 0;  // 初始mask不能有小于0的地方
             if( m[0] == 0 && (m[-1] > 0 || m[1] > 0 || m[-mstep] > 0 || m[mstep] > 0) )
             {
                 // Find smallest difference to adjacent markers
                 const uchar* ptr = img + j*3;
                 int idx = 256, t;
-                if( m[-1] > 0 )
+                if( m[-1] > 0 )  // 计算mask和非mask的之间的rgb的最大差值
                     c_diff( ptr, ptr - 3, idx );
                 if( m[1] > 0 )
                 {
@@ -216,15 +216,15 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
 
                 // Add to according queue
                 CV_Assert( 0 <= idx && idx <= 255 );
-                ws_push( idx, i*mstep + j, i*istep + j*3 );
-                m[0] = IN_QUEUE;
+                ws_push( idx, i*mstep + j, i*istep + j*3 );  // 将对应的差值位置点加入像素差值最小的队列，因为划分分水岭的时候是从最小差值开始的
+                m[0] = IN_QUEUE;  // 标记为这个mask已经看过了
             }
         }
     }
 
     // find the first non-empty queue
     for( i = 0; i < NQ; i++ )
-        if( q[i].first )
+        if( q[i].first )  // 找出第一个存在差值的队列，反正storage就是储存256个链表的队列的信息
             break;
 
     // if there is no markers, exit immediately
@@ -260,12 +260,12 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
 
         // Calculate pointer to current pixel in input and marker image
         m = mask + mofs;
-        ptr = img + iofs;
+        ptr = img + iofs;  // 偏移量
 
         // Check surrounding pixels for labels
         // to determine label for current pixel
         t = m[-1]; // Left
-        if( t > 0 ) lab = t;
+        if( t > 0 ) lab = t;  // 如果mask一开始只有一种的话，就寄了
         t = m[1]; // Right
         if( t > 0 )
         {
@@ -282,14 +282,14 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
         if( t > 0 )
         {
             if( lab == 0 ) lab = t;
-            else if( t != lab ) lab = WSHED;
+            else if( t != lab ) lab = WSHED;  // 如果该像素点的标记类型和邻居像素标记类型都 > 0 且不同，则为分水岭
         }
 
         // Set label to current pixel in marker image
         CV_Assert( lab != 0 );
         m[0] = lab;
 
-        if( lab == WSHED )
+        if( lab == WSHED )  // 也就是左右或者前后为不同的标签，那么就是分水岭
             continue;
 
         // Add adjacent, unlabeled pixels to corresponding queue
@@ -311,7 +311,7 @@ void cv::watershed( InputArray _src, InputOutputArray _markers )
         {
             c_diff( ptr, ptr - istep, t );
             ws_push( t, mofs - mstep, iofs - istep );
-            active_queue = ws_min( active_queue, t );
+            active_queue = ws_min( active_queue, t );  // 为什么要取最小的呢，是因为判断break的时候是从小往大走的
             m[-mstep] = IN_QUEUE;
         }
         if( m[mstep] == 0 )
